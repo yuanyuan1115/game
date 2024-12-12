@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>小朋友下樓梯冒險</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f4f8;
+            font-family: 'Comic Sans MS', cursive;
+        }
+        #gameContainer {
+            position: relative;
+            width: 400px;
+            height: 600px;
+            background-color: #87CEEB;
+            overflow: hidden;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        #saw {
+            position: absolute;
+            width: 100%;
+            height: 20px;
+            background: repeating-linear-gradient(
+                -45deg,
+                transparent,
+                transparent 10px,
+                #FFD700 10px,
+                #FFD700 20px,
+                #B8860B 20px,
+                #B8860B 30px,
+                transparent 30px,
+                transparent 40px
+            );
+        }        #player {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="%23FF6B6B"/><circle cx="35" cy="40" r="8" fill="white"/><circle cx="65" cy="40" r="8" fill="white"/><path d="M30 65 Q50 80, 70 65" stroke="black" stroke-width="5" fill="none"/></svg>');
+            background-size: cover;
+            transition: transform 0.1s;
+        }
+        .stair {
+            position: absolute;
+            width: 90px;
+            height: 20px;
+            background-color: #4CAF50;
+            border-radius: 5px;
+        }
+        #scoreBoard {
+            z-index: 99; 
+            position: absolute;
+            top: 40px; /* 修改這裡：將分數板往下移動，位於鋸齒下方 */
+            left: 10px;
+            font-size: 24px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #gameOver {
+            z-index: 999; 
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        button {
+            background-color: #FF6B6B;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #FF4757;
+        }
+        #startScreen {
+            display: block;
+        }
+        #gameOver {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="saw"></div>
+        <div id="scoreBoard">分數: 0</div>
+        <div id="player"></div>
+        <div id="gameOver">
+            <h2>遊戲結束！</h2>
+            <p>你的分數: <span id="finalScore">0</span></p>
+            <button onclick="restartGame()">再玩一次</button>
+        </div>
+    </div>
+
+<script>
+    const container = document.getElementById('gameContainer');
+    const player = document.getElementById('player');
+    const scoreBoard = document.getElementById('scoreBoard');
+    const gameOverScreen = document.getElementById('gameOver');
+    const startScreen = document.createElement('div');
+    const finalScoreElement = document.getElementById('finalScore');
+
+    let playerX = 175;
+    let playerY = 50;
+    let playerSpeedX = 0;
+    let velocityY = 0;
+    const gravity = 0.3;
+    let score = 0;
+    let stairs = [];
+    let gameActive = false;
+    let stairSpeed = 3;
+    const GAME_WIDTH = 400;
+    const GAME_HEIGHT = 600;
+
+    function createStartScreen() {
+        startScreen.id = 'startScreen';
+        startScreen.style.position = 'absolute';
+        startScreen.style.top = '0';
+        startScreen.style.left = '0';
+        startScreen.style.width = '100%';
+        startScreen.style.height = '100%';
+        startScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        startScreen.style.color = 'white';
+        startScreen.style.display = 'flex';
+        startScreen.style.flexDirection = 'column';
+        startScreen.style.justifyContent = 'center';
+        startScreen.style.alignItems = 'center';
+        startScreen.innerHTML = `
+            <h1>小朋友下樓梯冒險</h1>
+            <p>準備好挑戰鋸齒與樓梯的極限吧！</p>
+            <button id="startButton">開始遊戲</button>
+        `;
+        container.appendChild(startScreen);
+
+        document.getElementById('startButton').addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            startGame();
+        });
+    }
+
+    function createStair() {
+        const stair = document.createElement('div');
+        stair.classList.add('stair');
+        stair.style.left = `${Math.random() * (GAME_WIDTH - 120)}px`;
+        stair.style.top = `${GAME_HEIGHT}px`;
+        container.appendChild(stair);
+        return stair;
+    }
+
+    function createSaw() {
+        const saw = document.createElement('div');
+        saw.id = 'saw';
+        saw.style.position = 'absolute';
+        saw.style.top = '0';
+        saw.style.left = '0';
+        container.appendChild(saw);
+    }
+
+    function initGame() {
+        for (let i = 0; i < 5; i++) {
+            const stair = createStair();
+            stair.style.top = `${GAME_HEIGHT - i * 120}px`;
+            stairs.push(stair);
+        }
+
+        createSaw();
+    }
+
+    function moveStairs() {
+        stairs.forEach(stair => {
+            let top = parseFloat(stair.style.top);
+            stair.style.top = `${top - stairSpeed}px`;
+
+            if (top < -20) {
+                stair.style.top = `${GAME_HEIGHT}px`;
+                stair.style.left = `${Math.random() * (GAME_WIDTH - 120)}px`;
+                updateScore();
+            }
+        });
+    }
+
+    function updateScore() {
+        score += 10;
+        scoreBoard.textContent = `分數: ${score}`;
+
+        if (score % 50 === 0) {
+            stairSpeed += 0.5;
+        }
+    }
+
+    function checkCollision() {
+        const playerRect = player.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const saw = document.getElementById('saw');
+        const sawRect = saw.getBoundingClientRect();
+
+        let isOnStair = false;
+
+        if (
+            playerRect.top <= sawRect.bottom &&
+            playerRect.right > sawRect.left &&
+            playerRect.left < sawRect.right
+        ) {
+            gameOver();
+        }
+
+        stairs.forEach(stair => {
+            const stairRect = stair.getBoundingClientRect();
+
+            if (
+                playerRect.bottom >= stairRect.top &&
+                playerRect.bottom <= stairRect.bottom + 10 &&
+                playerRect.right > stairRect.left &&
+                playerRect.left < stairRect.right
+            ) {
+                isOnStair = true;
+                velocityY = 0;
+                playerY = stairRect.top - containerRect.top - 30;
+                player.style.top = `${playerY}px`;
+            }
+        });
+
+        if (!isOnStair) {
+            velocityY += gravity;
+            playerY += velocityY;
+        }
+
+        if (playerY > GAME_HEIGHT) {
+            gameOver();
+        }
+    }
+
+    function gameLoop() {
+        if (!gameActive) return;
+
+        playerX += playerSpeedX;
+        playerX = Math.max(0, Math.min(GAME_WIDTH - 50, playerX));
+        player.style.left = `${playerX}px`;
+        player.style.top = `${playerY}px`;
+
+        moveStairs();
+        checkCollision();
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function gameOver() {
+        gameActive = false;
+        gameOverScreen.style.display = 'block';
+        finalScoreElement.textContent = score;
+    }
+
+    function startGame() {
+    gameActive = true;
+    playerX = (GAME_WIDTH - 40) / 2;  // 使玩家在水平方向居中
+    playerY = (GAME_HEIGHT - 40) / 2; // 使玩家在垂直方向居中
+    score = 0;
+    stairSpeed = 3;
+    scoreBoard.textContent = '分數: 0';
+    gameOverScreen.style.display = 'none';
+    player.style.top = `${playerY}px`;
+    player.style.left = `${playerX}px`;
+    initGame();
+    gameLoop();
+
+    }
+
+    function restartGame() {
+        stairs.forEach(stair => stair.remove());
+        stairs = [];
+        playerX = (GAME_WIDTH - 40) / 2;  // 使玩家在水平方向居中
+        playerY = (GAME_HEIGHT - 40) / 2; // 使玩家在垂直方向居中
+        velocityY = 0;
+        score = 0;
+        stairSpeed = 3;
+        gameActive = true;
+        scoreBoard.textContent = '分數: 0';
+        gameOverScreen.style.display = 'none';
+        player.style.top = '50px';
+        player.style.left = '175px';
+        initGame();
+        gameLoop();
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (!gameActive) return;
+
+        switch (e.key) {
+            case 'a':
+            case 'A':
+                playerSpeedX = -5;
+                break;
+            case 'd':
+            case 'D':
+                playerSpeedX = 5;
+                break;
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (e.key === 'a' || e.key === 'A' || e.key === 'd' || e.key === 'D') {
+            playerSpeedX = 0;
+        }
+    });
+
+    createStartScreen();
+</script>
+
+</body>
+</html>
