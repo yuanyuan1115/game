@@ -16,40 +16,36 @@
             position: relative;
             width: 400px;
             height: 600px;
-            background-color: #87CEEB;
+            background-color: #404040;
             overflow: hidden;
             border-radius: 15px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
         #saw {
-            position: absolute;
-            width: 100%;
-            height: 20px;
-            background: repeating-linear-gradient(
-                -45deg,
-                transparent,
-                transparent 10px,
-                #FFD700 10px,
-                #FFD700 20px,
-                #B8860B 20px,
-                #B8860B 30px,
-                transparent 30px,
-                transparent 40px
-            );
-        }        #player {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="%23FF6B6B"/><circle cx="35" cy="40" r="8" fill="white"/><circle cx="65" cy="40" r="8" fill="white"/><path d="M30 65 Q50 80, 70 65" stroke="black" stroke-width="5" fill="none"/></svg>');
-            background-size: cover;
-            transition: transform 0.1s;
-        }
+        position: absolute;
+        width: 100%;
+        height: 20px; /* 调整高度以匹配图片 */
+        background-image: url(https://sb.koding.school/project_assets/67acd922ca1eafbbf33c4dfc3b40fe9d.png?v=1);
+        background-size: cover; /* 确保图片覆盖整个区域 */
+        background-repeat: no-repeat;   
+        }       
+       #player {
+    position: absolute;
+    width: 70px;  /* 修改为 70px */
+    height: 70px; /* 修改为 70px */
+    background-image: url('https://i.ibb.co/gjftpXW/Pngtree-cartoon-hand-drawn-pattern-japanese-ninja-3932280.png');
+    background-size: contain;  /* 使用 contain 保持图片比例 */
+    background-repeat: no-repeat; /* 防止图片重复 */
+    transition: transform 0.1s;
+      }
         .stair {
-            position: absolute;
-            width: 90px;
-            height: 20px;
-            background-color: #4CAF50;
-            border-radius: 5px;
+        position: absolute;
+        width: 90px;
+        height: 20px;
+        background-image: url(https://sb.koding.school/project_assets/36d0dfbb1615d10e79ee697de9d86638.png?v=1);
+        background-size: cover; /* 确保图片覆盖楼梯区域 */
+        background-repeat: no-repeat;
+        border-radius: 5px; /* 可选：如果图片不需要圆角，可删除此行 */
         }
         #scoreBoard {
             z-index: 99; 
@@ -74,7 +70,7 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.3);
         }
         button {
-            background-color: #FF6B6B;
+            background-color: #586e75;
             color: white;
             border: none;
             padding: 10px 20px;
@@ -117,12 +113,13 @@
     let playerX = 175;
     let playerY = 50;
     let playerSpeedX = 0;
+    const playerMovementSpeed = 5;
     let velocityY = 0;
-    const gravity = 0.3;
+    const gravity = 0.2;
     let score = 0;
     let stairs = [];
     let gameActive = false;
-    let stairSpeed = 3;
+    let stairSpeed = 2;
     const GAME_WIDTH = 400;
     const GAME_HEIGHT = 600;
 
@@ -202,47 +199,53 @@
         }
     }
 
-    function checkCollision() {
-        const playerRect = player.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        const saw = document.getElementById('saw');
-        const sawRect = saw.getBoundingClientRect();
+function checkCollision() {
+    const playerRect = player.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const saw = document.getElementById('saw');
+    const sawRect = saw.getBoundingClientRect();
 
-        let isOnStair = false;
+    let isOnStair = false;
 
-        if (
-            playerRect.top <= sawRect.bottom &&
-            playerRect.right > sawRect.left &&
-            playerRect.left < sawRect.right
-        ) {
-            gameOver();
-        }
-
-        stairs.forEach(stair => {
-            const stairRect = stair.getBoundingClientRect();
-
-            if (
-                playerRect.bottom >= stairRect.top &&
-                playerRect.bottom <= stairRect.bottom + 10 &&
-                playerRect.right > stairRect.left &&
-                playerRect.left < stairRect.right
-            ) {
-                isOnStair = true;
-                velocityY = 0;
-                playerY = stairRect.top - containerRect.top - 30;
-                player.style.top = `${playerY}px`;
-            }
-        });
-
-        if (!isOnStair) {
-            velocityY += gravity;
-            playerY += velocityY;
-        }
-
-        if (playerY > GAME_HEIGHT) {
-            gameOver();
-        }
+    // 检查是否与锯子碰撞
+    if (
+        playerRect.top <= sawRect.bottom &&
+        playerRect.right > sawRect.left &&
+        playerRect.left < sawRect.right
+    ) {
+        gameOver();
     }
+
+    // 遍历所有楼梯进行碰撞检测
+stairs.forEach(stair => {
+    const stairRect = stair.getBoundingClientRect();
+
+    // 確認角色是從上方掉落到梯子上，而不是直接 "吸附" 上去
+    if (
+        playerRect.bottom + velocityY >= stairRect.top && // 玩家底部到梯子頂部
+        playerRect.top + velocityY <= stairRect.top + 5 &&   // 玩家頂部到梯子底部
+        playerRect.right > stairRect.left &&              // 玩家右側超過梯子左側
+        playerRect.left < stairRect.right                 // 玩家左側未超過梯子右側
+    ) {
+        isOnStair = true;
+        velocityY = 0; // 停止下落
+        playerY = stairRect.top - containerRect.top - playerRect.height;
+        player.style.top = `${playerY}px`; // 更新人物位置
+    }
+});   
+    if (!isOnStair) {
+        velocityY += gravity;  // 继续加速下落
+        playerY += velocityY;  // 更新玩家垂直位置
+    }
+
+    // 确保角色不会掉出游戏区域
+    if (playerY > GAME_HEIGHT) {
+        gameOver();
+    }
+
+    // 更新人物位置
+    player.style.top = `${playerY}px`;
+}
 
     function gameLoop() {
         if (!gameActive) return;
@@ -302,7 +305,7 @@
         switch (e.key) {
             case 'a':
             case 'A':
-                playerSpeedX = -5;
+                playerSpeedX = -playerMovementSpeed;
                 break;
             case 'd':
             case 'D':
